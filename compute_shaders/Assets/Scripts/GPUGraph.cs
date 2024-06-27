@@ -40,9 +40,9 @@ public class GPUGraph : MonoBehaviour
         computeShader.Dispatch(kernelIndex, groups, groups, 1);
         material.SetBuffer(positionsId, positionsBuffer);
         material.SetFloat(stepId, step);
-        // ÖĞĞÄÎª0 0 0£¬±ß³¤Ò»¶¨µÄÁ¢·½Ìå
+        // ä¸­å¿ƒä¸º0 0 0ï¼Œè¾¹é•¿ä¸€å®šçš„ç«‹æ–¹ä½“
         var bounds = new Bounds(Vector3.zero, Vector3.one * (2f + 2f / resolution));
-        // 0ÊÇsub-materialµÄindex£¬ÕâÀï²»ĞèÒª
+        // 0æ˜¯sub-materialçš„indexï¼Œè¿™é‡Œä¸éœ€è¦
         Graphics.DrawMeshInstancedProcedural(
             mesh, 0, material, bounds, resolution * resolution
         );
@@ -69,9 +69,9 @@ public class GPUGraph : MonoBehaviour
     
     void OnEnable()
     {
-        // Awake²»¹Ü¶ÔÏóÊÇ·ñenable¶¼»áµ÷ÓÃ£¬Èç¹ûenable»áµ÷ÓÃOnEnable
-        // ÈÈÖØÔØµÄÊ±ºò»áÏÈdisableÓÎÏ·¶ÔÏóÔÙenable
-        // µÚ¶ş¸ö²ÎÊıÊÇÒ»¸ö¶ÔÏóµÄ´óĞ¡£¬µÚÒ»¸ö²ÎÊıÊÇ¶ÔÏó¸öÊı
+        // Awakeä¸ç®¡å¯¹è±¡æ˜¯å¦enableéƒ½ä¼šè°ƒç”¨ï¼Œå¦‚æœenableä¼šè°ƒç”¨OnEnable
+        // çƒ­é‡è½½çš„æ—¶å€™ä¼šå…ˆdisableæ¸¸æˆå¯¹è±¡å†enable
+        // ç¬¬äºŒä¸ªå‚æ•°æ˜¯ä¸€ä¸ªå¯¹è±¡çš„å¤§å°ï¼Œç¬¬ä¸€ä¸ªå‚æ•°æ˜¯å¯¹è±¡ä¸ªæ•°
         positionsBuffer = new ComputeBuffer(maxResolution * maxResolution, 3 * 4);
     }
     void OnDisable()
@@ -79,7 +79,7 @@ public class GPUGraph : MonoBehaviour
         positionsBuffer.Release();
         positionsBuffer = null;
     }
-    // play modeÏÂ¸ü¸ÄresolutionÊıÄ¿ÓĞĞ§µ«ÊÇupdateº¯Êı²¢²»ÒÀÀµÓÚÕâ¸öÊıÄ¿
+    // play modeä¸‹æ›´æ”¹resolutionæ•°ç›®æœ‰æ•ˆä½†æ˜¯updateå‡½æ•°å¹¶ä¸ä¾èµ–äºè¿™ä¸ªæ•°ç›®
     void Update()
     {
         duration += Time.deltaTime;
