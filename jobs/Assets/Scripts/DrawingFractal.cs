@@ -1,4 +1,4 @@
-// TODO 3.4 shaders
+// TODO 3.6
 using UnityEngine;
 
 public class DrawingFractal : MonoBehaviour
@@ -11,9 +11,10 @@ public class DrawingFractal : MonoBehaviour
         // 所以再开一个变量记录角度
         public float spinAngle;
     }
+    static MaterialPropertyBlock propertyBlock;
     FractalPart[][] parts;
     private Matrix4x4[][] matrixs;
-    
+    static readonly int matrixsId = Shader.PropertyToID("_Matrixs");
     [SerializeField]
     public Mesh mesh;
     [SerializeField, Range(1, 8)]
@@ -33,6 +34,9 @@ public class DrawingFractal : MonoBehaviour
     ComputeBuffer[] matrixsBuffers;
     private void OnEnable()
     {
+        if (propertyBlock == null) {
+            propertyBlock = new MaterialPropertyBlock();
+        }
         parts = new FractalPart[depth][];
         matrixs = new Matrix4x4[depth][];
         matrixsBuffers = new ComputeBuffer[depth];
@@ -129,6 +133,16 @@ public class DrawingFractal : MonoBehaviour
         foreach (ComputeBuffer buffer in matrixsBuffers)
         {
             buffer.SetData(matrixs[num++]);
+        }
+        
+        var bounds = new Bounds(Vector3.zero, 3f * Vector3.one);
+        for (int i = 0; i < matrixsBuffers.Length; i++) {
+            ComputeBuffer buffer = matrixsBuffers[i];
+            buffer.SetData(matrixs[i]);
+            // 不能直接使用material.SetBuffer，因为这是发送一个命令，matrixsBuffers.Length命令发送完后，material的Buffer是最后一次设置的
+            propertyBlock.SetBuffer(matrixsId, buffer);
+            Graphics.DrawMeshInstancedProcedural(mesh, 0, material, bounds, buffer.count,
+                propertyBlock);
         }
     }
 }
