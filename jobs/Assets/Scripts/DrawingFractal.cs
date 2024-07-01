@@ -1,13 +1,12 @@
-// TODO 3.6
 using UnityEngine;
 
 public class DrawingFractal : MonoBehaviour
 {
     struct FractalPart
     {
-        public Vector3 direction,worldPosition;
+        public Vector3 direction, worldPosition;
         // 一直用四元数累乘，浮点误差积累，可能造成四元数模长不为1，导致报错
-        public Quaternion rotation,worldRotation;
+        public Quaternion rotation, worldRotation;
         // 所以再开一个变量记录角度
         public float spinAngle;
     }
@@ -31,7 +30,7 @@ public class DrawingFractal : MonoBehaviour
         Quaternion.Euler(90f, 0f, 0f), Quaternion.Euler(-90f, 0f, 0f)
     };
     
-    ComputeBuffer[] matrixsBuffers;
+    ComputeBuffer[] matrixBuffers;
     private void OnEnable()
     {
         if (propertyBlock == null) {
@@ -39,13 +38,13 @@ public class DrawingFractal : MonoBehaviour
         }
         parts = new FractalPart[depth][];
         matrixs = new Matrix4x4[depth][];
-        matrixsBuffers = new ComputeBuffer[depth];
+        matrixBuffers = new ComputeBuffer[depth];
         int stride = 16 * 4;
         for (int i = 0, length = 1; i < parts.Length; i++, length *= 5)
         {
             parts[i] = new FractalPart[length];
             matrixs[i] = new Matrix4x4[length];
-            matrixsBuffers[i] = new ComputeBuffer(length, stride);
+            matrixBuffers[i] = new ComputeBuffer(length, stride);
         }
         parts[0][0] = CreatePart(0);
         for (int li = 1; li < parts.Length; li++)
@@ -63,12 +62,12 @@ public class DrawingFractal : MonoBehaviour
 
     private void OnDisable()
     {
-        for (int i = 0; i < matrixsBuffers.Length; i++) {
-            matrixsBuffers[i].Release();
+        for (int i = 0; i < matrixBuffers.Length; i++) {
+            matrixBuffers[i].Release();
         }
         parts = null;
         matrixs = null;
-        matrixsBuffers = null;
+        matrixBuffers = null;
     }
 
     // 在Inspector中修改值后调用 
@@ -76,7 +75,6 @@ public class DrawingFractal : MonoBehaviour
     {
         if (parts != null && enabled)
         {
-            Debug.Log("OnValidate");
             OnDisable();
             OnEnable();
         }
@@ -99,11 +97,14 @@ public class DrawingFractal : MonoBehaviour
         rootPart.spinAngle += spinAngleDelta;
         rootPart.worldRotation =
             rootPart.rotation * Quaternion.Euler(0f, rootPart.spinAngle, 0f);
+        rootPart.worldPosition = transform.position;
         parts[0][0] = rootPart;
-        matrixs[0][0] = Matrix4x4.TRS(rootPart.worldPosition
-            , rootPart.worldRotation, Vector3.one);
-        
-        float scale = 1f;
+        float objectScale = transform.lossyScale.x; // global scale
+        matrixs[0][0] = Matrix4x4.TRS(
+            rootPart.worldPosition, rootPart.worldRotation, objectScale * Vector3.one
+        );
+
+        float scale = objectScale;
         for (int li = 1; li < parts.Length; li++)
         {
             scale *= 0.5f;
@@ -130,14 +131,14 @@ public class DrawingFractal : MonoBehaviour
         }
 
         int num = 0;
-        foreach (ComputeBuffer buffer in matrixsBuffers)
+        foreach (ComputeBuffer buffer in matrixBuffers)
         {
             buffer.SetData(matrixs[num++]);
         }
         
-        var bounds = new Bounds(Vector3.zero, 3f * Vector3.one);
-        for (int i = 0; i < matrixsBuffers.Length; i++) {
-            ComputeBuffer buffer = matrixsBuffers[i];
+        var bounds = new Bounds(rootPart.worldPosition, 3f * objectScale * Vector3.one);
+        for (int i = 0; i < matrixBuffers.Length; i++) {
+            ComputeBuffer buffer = matrixBuffers[i];
             buffer.SetData(matrixs[i]);
             // 不能直接使用material.SetBuffer，因为这是发送一个命令，matrixsBuffers.Length命令发送完后，material的Buffer是最后一次设置的
             propertyBlock.SetBuffer(matrixsId, buffer);
