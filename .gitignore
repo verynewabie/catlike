@@ -1,6 +1,9 @@
-/*/*
-!**/Asset/*
-!**/Packages/*
-!**/ProjectSettings/*
-!.gitignore
-!README.md
+**/.idea
+**/.vs
+**/Library
+**/Logs
+**/obj
+**/UserSettings
+**/.vsconfig
+**/*.csproj
+**/*.sln
