@@ -54,7 +54,6 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 #ifdef _CLIPPING
     clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
 #endif
-    base.rgb = normalize(input.normalWS);
     // 这样并不会降低性能，因为Shader编译后是高度优化的
     Surface surface;
     surface.normal = normalize(input.normalWS);

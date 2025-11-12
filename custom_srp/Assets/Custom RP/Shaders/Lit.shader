@@ -25,7 +25,9 @@ Shader "Custom RP/Lit"
 			ZWrite [_ZWrite]
 			
 			HLSLPROGRAM
-			
+
+			// 有些低版本还不支持变量循环，这里我们设置一个支持的版本
+			#pragma target 3.5
 			#pragma shader_feature _CLIPPING
 			#pragma multi_compile_instancing
 			#pragma vertex LitPassVertex
