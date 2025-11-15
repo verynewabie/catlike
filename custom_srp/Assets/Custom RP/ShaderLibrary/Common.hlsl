@@ -3,6 +3,7 @@
 
 // real类型和一些别的基础宏都定义在该文件中
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
 #include "UnityInput.hlsl"
 
 // 使用CoreRP库要定义宏
@@ -14,6 +15,10 @@
 #define UNITY_PREV_MATRIX_M unity_prev_MatrixM
 #define UNITY_PREV_MATRIX_I_M unity_prev_MatrixIM
 #define UNITY_MATRIX_P glstate_matrix_projection
+
+float Square (float v) {
+	return v * v;
+}
 
 // 定义GPU实例化要用到的一些宏
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
