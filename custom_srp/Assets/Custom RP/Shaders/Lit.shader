@@ -20,7 +20,7 @@ Shader "Custom RP/Lit"
 		_ZWrite ("Z Write", Float) = 1
 		[Toggle(_PREMULTIPLY_ALPHA)] _PremulAlpha ("Premultiply Alpha", Float) = 0
 	}
-	
+	CustomEditor "CustomShaderGUI"
 	SubShader
 	{
 		Pass
