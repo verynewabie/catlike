@@ -6,6 +6,7 @@ public class CustomRenderPipeline : RenderPipeline
 {
 	private readonly bool _useDynamicBatching;
 	private readonly bool _useGPUInstancing;
+	private readonly ShadowSettings _shadowSettings;
 	
 	private readonly CameraRenderer _renderer = new CameraRenderer();
 	// 由List.ToArray传参，每帧都会分配内存，虽然分配后的内存只复制引用
@@ -13,7 +14,7 @@ public class CustomRenderPipeline : RenderPipeline
 	{
 		foreach (var camera in cameras)
 		{
-			_renderer.Render(context, camera, _useDynamicBatching, _useGPUInstancing);
+			_renderer.Render(context, camera, _useDynamicBatching, _useGPUInstancing, _shadowSettings);
 		}
 	}
 
@@ -21,15 +22,16 @@ public class CustomRenderPipeline : RenderPipeline
 	{
 		foreach (var camera in cameras)
 		{
-			_renderer.Render(context, camera, _useDynamicBatching, _useGPUInstancing);
+			_renderer.Render(context, camera, _useDynamicBatching, _useGPUInstancing, _shadowSettings);
 		}
 	}
 	
-	public CustomRenderPipeline (bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher) 
+	public CustomRenderPipeline (bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher, ShadowSettings shadowSettings) 
 	{
 		GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
 		_useDynamicBatching = useDynamicBatching;
 		_useGPUInstancing = useGPUInstancing;
+		_shadowSettings = shadowSettings;
 		GraphicsSettings.lightsUseLinearIntensity = true;
 	}
 }

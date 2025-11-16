@@ -16,18 +16,22 @@ public class Lighting
 	private static readonly Vector4[] _dirLightDirections = new Vector4[MaxDirLightCount];
 	
 	private CullingResults _cullingResults;
-
-	private readonly CommandBuffer _buffer = new CommandBuffer {
-		name = BufferName
-	};
+	private readonly CommandBuffer _buffer = new CommandBuffer { name = BufferName };
+	private readonly Shadows _shadows = new Shadows();
 	
-	public void Setup(ScriptableRenderContext context, CullingResults cullingResults) {
+	public void Setup(ScriptableRenderContext context, CullingResults cullingResults, ShadowSettings shadowSettings) {
 		_cullingResults = cullingResults;
 		_buffer.BeginSample(BufferName);
+		_shadows.Setup(context, cullingResults, shadowSettings);
 		SetupLights();
+		_shadows.Render();
 		_buffer.EndSample(BufferName);
 		context.ExecuteCommandBuffer(_buffer);
 		_buffer.Clear();
+	}
+	
+	public void Cleanup () {
+		_shadows.Cleanup();
 	}
 
 	private void SetupLights()
@@ -40,6 +44,7 @@ public class Lighting
 		{
 			var visibleLight = visibleLights[i];
 			if (visibleLight.lightType != LightType.Directional) continue;
+			// TODO：我们现在从CullResult中拿光，传Index，再根据Index调用CullResult的计算方法，当不止有直线光时这里会报错
 			SetupDirectionalLight(dirLightCount++, ref visibleLight);
 			if (dirLightCount >= MaxDirLightCount)
 				break;
@@ -56,5 +61,6 @@ public class Lighting
 		_dirLightColors[index] = visibleLight.finalColor;
 		// 光没有缩放的话，可以这样拿方向
 		_dirLightDirections[index] = -visibleLight.localToWorldMatrix.GetColumn(2);
+		_shadows.ReserveDirectionalShadows(visibleLight.light, index);
 	}
 }

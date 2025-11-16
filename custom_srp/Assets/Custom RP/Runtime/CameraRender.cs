@@ -6,9 +6,7 @@ public partial class CameraRenderer
 	private const string BufferName = "Render Camera";
 
 	// 天空盒渲染有专门函数，没有的就用CommandBuffer
-	private readonly CommandBuffer _buffer = new CommandBuffer {
-		name = BufferName
-	};
+	private readonly CommandBuffer _buffer = new CommandBuffer { name = BufferName };
 
 	private static readonly ShaderTagId _unlitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
 	private static readonly ShaderTagId _litShaderTagId = new ShaderTagId("CustomLit");
@@ -19,8 +17,7 @@ public partial class CameraRenderer
 	private CullingResults _cullingResults;
 	private readonly Lighting _lighting = new Lighting();
 	
-	public void Render(ScriptableRenderContext context, Camera camera,
-		bool useDynamicBatching, bool useGPUInstancing)
+	public void Render(ScriptableRenderContext context, Camera camera, bool useDynamicBatching, bool useGPUInstancing, ShadowSettings shadowSettings)
 	{
 		_context = context;
 		_camera = camera;
@@ -29,15 +26,20 @@ public partial class CameraRenderer
 		PrepareBuffer();
 		// 必须在剔除前执行，这样剔除才正确
 		PrepareForSceneWindow();
-		if (!Cull()) {
+		if (!Cull(shadowSettings.maxDistance)) {
 			return;
 		}
 		
+		_buffer.BeginSample(SampleName);
+		ExecuteBuffer();
+		_lighting.Setup(context, _cullingResults, shadowSettings);
+		_buffer.EndSample(SampleName);
+		// Lighting的Setup会设置光源的View、Projection，而CameraRender的Setup会设回Camera的
 		Setup();
-		_lighting.Setup(context, _cullingResults);
 		DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
 		DrawUnsupportedShaders();
 		DrawGizmos();
+		_lighting.Cleanup();
 		Submit();
 	}
 	
@@ -70,12 +72,7 @@ public partial class CameraRenderer
 		_context.SetupCameraProperties(_camera);
 		// Skybox = 1, Color, Depth, Nothing = 4，只有Skybox时相机才会渲染天空盒
 		CameraClearFlags flags = _camera.clearFlags;
-		_buffer.ClearRenderTarget(
-			flags <= CameraClearFlags.Depth,
-			flags == CameraClearFlags.Color,
-			flags == CameraClearFlags.Color ?
-				_camera.backgroundColor.linear : Color.clear
-		);
+		_buffer.ClearRenderTarget(flags <= CameraClearFlags.Depth, flags == CameraClearFlags.Color, flags == CameraClearFlags.Color ? _camera.backgroundColor.linear : Color.clear);
 		_buffer.BeginSample(SampleName);
 		ExecuteBuffer(); 
 	}
@@ -89,8 +86,9 @@ public partial class CameraRenderer
 		_buffer.Clear();
 	}
 	
-	private bool Cull () {
+	private bool Cull (float maxDistance) {
 		if (_camera.TryGetCullingParameters(out ScriptableCullingParameters p)) {
+			p.shadowDistance = Mathf.Min(maxDistance, _camera.farClipPlane);
 			// 这里传ref仅仅为了优化
 			_cullingResults = _context.Cull(ref p);
 			return true;
