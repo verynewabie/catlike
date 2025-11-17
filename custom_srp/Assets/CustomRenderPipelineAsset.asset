@@ -12,6 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: de2937d5a54b15f42951331cbe4af789, type: 3}
   m_Name: CustomRenderPipelineAsset
   m_EditorClassIdentifier: 
+  _shadows:
+    directional:
+      atlasSize: 512
+    maxDistance: 10
   _useDynamicBatching: 1
   _useGPUInstancing: 1
   _useSRPBatcher: 0

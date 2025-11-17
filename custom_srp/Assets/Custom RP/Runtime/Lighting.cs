@@ -12,8 +12,10 @@ public class Lighting
 	private static readonly int _dirLightCountId = Shader.PropertyToID("_DirectionalLightCount");
 	private static readonly int	_dirLightColorsId = Shader.PropertyToID("_DirectionalLightColors");
 	private static readonly int	_dirLightDirectionsId = Shader.PropertyToID("_DirectionalLightDirections");
+	private static readonly int _dirLightShadowDataId = Shader.PropertyToID("_DirectionalLightShadowData");
 	private static readonly Vector4[] _dirLightColors = new Vector4[MaxDirLightCount];
 	private static readonly Vector4[] _dirLightDirections = new Vector4[MaxDirLightCount];
+	private static readonly Vector4[] _dirLightShadowData = new Vector4[MaxDirLightCount];
 	
 	private CullingResults _cullingResults;
 	private readonly CommandBuffer _buffer = new CommandBuffer { name = BufferName };
@@ -53,6 +55,7 @@ public class Lighting
 		_buffer.SetGlobalInt(_dirLightCountId, dirLightCount);
 		_buffer.SetGlobalVectorArray(_dirLightColorsId, _dirLightColors);
 		_buffer.SetGlobalVectorArray(_dirLightDirectionsId, _dirLightDirections);
+		_buffer.SetGlobalVectorArray(_dirLightShadowDataId, _dirLightShadowData);
 	}
 
 	private void SetupDirectionalLight(int index, ref VisibleLight visibleLight)
@@ -61,6 +64,6 @@ public class Lighting
 		_dirLightColors[index] = visibleLight.finalColor;
 		// 光没有缩放的话，可以这样拿方向
 		_dirLightDirections[index] = -visibleLight.localToWorldMatrix.GetColumn(2);
-		_shadows.ReserveDirectionalShadows(visibleLight.light, index);
+		_dirLightShadowData[index] = _shadows.ReserveDirectionalShadows(visibleLight.light, index);
 	}
 }
