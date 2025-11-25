@@ -14,8 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _shadows:
     directional:
-      atlasSize: 512
-    maxDistance: 10
+      atlasSize: 2048
+      cascadeCount: 4
+      cascadeRatio1: 0.3
+      cascadeRatio2: 0.4
+      cascadeRatio3: 0.5
+    maxDistance: 30
   _useDynamicBatching: 1
   _useGPUInstancing: 1
   _useSRPBatcher: 0
