@@ -116,6 +116,9 @@ float FilterDirectionalShadow (float3 positionSTS) {
 }
 
 float GetDirectionalShadowAttenuation (DirectionalShadowData directional, ShadowData global, Surface surfaceWS) {
+#if !defined(_RECEIVE_SHADOWS)
+	return 1.0;
+#endif
 	// 现代GPU处理分支没那么慢，而且对于同一个光源，都会走同一个分支（GPU并行时只要分支被一个片元跑到，其它片元都会跑）
 	if (directional.strength <= 0.0) {
 		return 1.0;

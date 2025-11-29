@@ -9,6 +9,19 @@ public class CustomShaderGUI : ShaderGUI
 	private MaterialProperty[] _properties;
 	private bool _showPresets;
 	
+	enum ShadowMode {
+		On, Clip, Dither, Off
+	}
+
+	ShadowMode Shadows {
+		set {
+			if (SetProperty("_Shadows", (float)value)) {
+				SetKeyword("_SHADOWS_CLIP", value == ShadowMode.Clip);
+				SetKeyword("_SHADOWS_DITHER", value == ShadowMode.Dither);
+			}
+		}
+	}
+	
 	public bool Clipping {
 		set => SetProperty("_Clipping", "_CLIPPING", value);
 	}
@@ -44,6 +57,7 @@ public class CustomShaderGUI : ShaderGUI
 	}
 
 	public override void OnGUI (MaterialEditor materialEditor, MaterialProperty[] properties) {
+		EditorGUI.BeginChangeCheck();
 		base.OnGUI(materialEditor, properties);
 		_editor = materialEditor;
 		_materials = materialEditor.targets;
@@ -57,6 +71,9 @@ public class CustomShaderGUI : ShaderGUI
 			ClipPreset();
 			FadePreset();
 			TransparentPreset();
+		}
+		if (EditorGUI.EndChangeCheck()) {
+			SetShadowCasterPass();
 		}
 	}
 	
@@ -105,6 +122,7 @@ public class CustomShaderGUI : ShaderGUI
 			DstBlend = BlendMode.Zero;
 			ZWrite = true;
 			RenderQueue = RenderQueue.Geometry;
+			Shadows = ShadowMode.On;
 		}
 	}
 	
@@ -116,6 +134,7 @@ public class CustomShaderGUI : ShaderGUI
 			DstBlend = BlendMode.Zero;
 			ZWrite = true;
 			RenderQueue = RenderQueue.AlphaTest;
+			Shadows = ShadowMode.Clip;
 		}
 	}
 	
@@ -127,6 +146,7 @@ public class CustomShaderGUI : ShaderGUI
 			DstBlend = BlendMode.OneMinusSrcAlpha;
 			ZWrite = false;
 			RenderQueue = RenderQueue.Transparent;
+			Shadows = ShadowMode.Dither;
 		}
 	}
 	
@@ -138,6 +158,7 @@ public class CustomShaderGUI : ShaderGUI
 			DstBlend = BlendMode.OneMinusSrcAlpha;
 			ZWrite = false;
 			RenderQueue = RenderQueue.Transparent;
+			Shadows = ShadowMode.Dither;
 		}
 	}
 	
@@ -147,5 +168,18 @@ public class CustomShaderGUI : ShaderGUI
 			return true;
 		}
 		return false;
+	}
+	
+	private void SetShadowCasterPass () {
+		MaterialProperty shadows = FindProperty("_Shadows", _properties, false);
+		if (shadows == null || shadows.hasMixedValue) {
+			return;
+		}
+		bool enabled = shadows.floatValue < (float)ShadowMode.Off;
+		foreach (var o in _materials)
+		{
+			var m = (Material)o;
+			m.SetShaderPassEnabled("ShadowCaster", enabled);
+		}
 	}
 }
