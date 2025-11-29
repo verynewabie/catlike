@@ -59,7 +59,6 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
 #ifdef _CLIPPING
     clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
 #endif
-    // 这样并不会降低性能，因为Shader编译后是高度优化的
     Surface surface;
     surface.position = input.positionWS;
     surface.normal = normalize(input.normalWS);
@@ -69,6 +68,8 @@ float4 LitPassFragment (Varyings input) : SV_TARGET {
     surface.alpha = base.a;
     surface.metallic = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Metallic);
     surface.smoothness = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Smoothness);
+    // 第二个参数用于动画，留空
+    surface.dither = InterleavedGradientNoise(input.positionCS.xy, 0);
     // BRDF从Surface中读数据
 #if defined(_PREMULTIPLY_ALPHA)
     BRDF brdf = GetBRDF(surface, true);

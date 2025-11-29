@@ -15,11 +15,15 @@ MonoBehaviour:
   _shadows:
     directional:
       atlasSize: 2048
+      filter: 3
       cascadeCount: 4
-      cascadeRatio1: 0.3
-      cascadeRatio2: 0.4
+      cascadeRatio1: 0.1
+      cascadeRatio2: 0.3
       cascadeRatio3: 0.5
-    maxDistance: 30
+      cascadeFade: 0.1
+      cascadeBlend: 1
+    maxDistance: 20
+    distanceFade: 0.1
   _useDynamicBatching: 1
   _useGPUInstancing: 1
   _useSRPBatcher: 0

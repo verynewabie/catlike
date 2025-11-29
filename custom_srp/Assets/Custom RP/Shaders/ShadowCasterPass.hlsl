@@ -30,6 +30,13 @@ Varyings ShadowCasterPassVertex (Attributes input) {
 	UNITY_TRANSFER_INSTANCE_ID(input, output);
 	float3 positionWS = TransformObjectToWorld(input.positionOS);
 	output.positionCS = TransformWorldToHClip(positionWS);
+	// REVERSED平台中近平面更大，要取较小值
+	#if UNITY_REVERSED_Z
+	// positionCS.w * UNITY_NEAR_CLIP_VALUE 得到近平面在裁剪空间中的值，适用于透视与正交
+	output.positionCS.z = min(output.positionCS.z, output.positionCS.w * UNITY_NEAR_CLIP_VALUE);
+	#else
+	output.positionCS.z = max(output.positionCS.z, output.positionCS.w * UNITY_NEAR_CLIP_VALUE);
+	#endif
 
 	float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);
 	output.baseUV = input.baseUV * baseST.xy + baseST.zw;

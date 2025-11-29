@@ -5,6 +5,8 @@ public class Shadows
 {
 	struct ShadowedDirectionalLight {
 		public int visibleLightIndex;
+		public float slopeScaleBias;
+		public float nearPlaneOffset;
 	}
 	
 	private const string BufferName = "Shadows";
@@ -21,12 +23,27 @@ public class Shadows
 	private static readonly int _dirShadowMatricesId = Shader.PropertyToID("_DirectionalShadowMatrices");
 	private static readonly int _cascadeCountId = Shader.PropertyToID("_CascadeCount");
 	private static readonly int _cascadeCullingSpheresId = Shader.PropertyToID("_CascadeCullingSpheres");
-	private static readonly int _shadowDistanceFadeId = Shader.PropertyToID("_ShadowDistance");
+	private static readonly int _shadowAtlasSizeId = Shader.PropertyToID("_ShadowAtlasSize");
+	private static readonly int _shadowDistanceFadeId = Shader.PropertyToID("_ShadowDistanceFade");
+	private static readonly int _cascadeDataId = Shader.PropertyToID("_CascadeData");
 	
 	// 对于每个片段，我们需要从阴影图集中的相应图块中采样深度信息
 	private static readonly Matrix4x4[] _dirShadowMatrices = new Matrix4x4[MaxShadowedDirectionalLightCount * MaxCascades];
 	// 相同级联对应的裁剪球相同，存坐标和半径平方
 	private static readonly Vector4[] _cascadeCullingSpheres = new Vector4[MaxCascades];
+	// x:1/裁剪球半径 y:texelSize*1.4142136
+	private static readonly Vector4[] _cascadeData = new Vector4[MaxCascades];
+	
+	private static readonly string[] _directionalFilterKeywords = {
+		"_DIRECTIONAL_PCF3",
+		"_DIRECTIONAL_PCF5",
+		"_DIRECTIONAL_PCF7",
+	};
+	
+	private static readonly string[] _cascadeBlendKeywords = {
+		"_CASCADE_BLEND_SOFT",
+		"_CASCADE_BLEND_DITHER"
+	};
 
 	public void Setup (ScriptableRenderContext context, CullingResults cullingResults, ShadowSettings settings) {
 		_context = context;
@@ -35,17 +52,23 @@ public class Shadows
 		_shadowedDirectionalLightCount = 0;
 	}
 
-	public Vector2 ReserveDirectionalShadows(Light light, int visibleLightIndex)
+	public Vector3 ReserveDirectionalShadows(Light light, int visibleLightIndex)
 	{
 		// 目前只有直线光，所以用visibleLightIndex还是对的
 		// GetShadowCasterBounds拿到阴影剔除结果，如果范围内没有投射阴影的物体，或距离超出，就返回false
 		if (_shadowedDirectionalLightCount < MaxShadowedDirectionalLightCount && light.shadows != LightShadows.None && light.shadowStrength > 0f
 		    && _cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds b)) {
-			_shadowedDirectionalLights[_shadowedDirectionalLightCount] = new ShadowedDirectionalLight { visibleLightIndex = visibleLightIndex };
-			return new Vector2(light.shadowStrength, _settings.directional.cascadeCount * _shadowedDirectionalLightCount++);
+			_shadowedDirectionalLights[_shadowedDirectionalLightCount] = new ShadowedDirectionalLight
+			{
+				visibleLightIndex = visibleLightIndex,
+				slopeScaleBias = light.shadowBias,
+				nearPlaneOffset = light.shadowNearPlane
+			};
+			// 我们只是利用 light.shadowNormalBias 和 light.shadowBias 属性，它们原来的功能和我们的用法不一样
+			return new Vector3(light.shadowStrength, _settings.directional.cascadeCount * _shadowedDirectionalLightCount++, light.shadowNormalBias);
 		}
 		// 0传入Light.hlsl后，在Shadows.hlsl中计算时特判返回1
-		return Vector2.zero;
+		return Vector3.zero;
 	}
 
 	public void Render () {
@@ -78,11 +101,26 @@ public class Shadows
 		
 		_buffer.SetGlobalInt(_cascadeCountId, _settings.directional.cascadeCount);
 		_buffer.SetGlobalVectorArray(_cascadeCullingSpheresId, _cascadeCullingSpheres);
+		_buffer.SetGlobalVectorArray(_cascadeDataId, _cascadeData);
 		_buffer.SetGlobalMatrixArray(_dirShadowMatricesId, _dirShadowMatrices);
 		float f = 1f - _settings.directional.cascadeFade;
 		_buffer.SetGlobalVector(_shadowDistanceFadeId, new Vector4(1f / _settings.maxDistance, 1f / _settings.distanceFade, 1f / (1f - f * f)));
+		SetKeywords(_directionalFilterKeywords, (int)_settings.directional.filter - 1);
+		SetKeywords(_cascadeBlendKeywords, (int)_settings.directional.cascadeBlend - 1);
+		_buffer.SetGlobalVector(_shadowAtlasSizeId, new Vector4(atlasSize, 1f / atlasSize));
 		_buffer.EndSample(BufferName);
 		ExecuteBuffer();
+	}
+	
+	private void SetKeywords (string[] keywords, int enabledIndex) {
+		for (int i = 0; i < keywords.Length; i++) {
+			if (i == enabledIndex) {
+				_buffer.EnableShaderKeyword(keywords[i]);
+			}
+			else {
+				_buffer.DisableShaderKeyword(keywords[i]);
+			}
+		}
 	}
 	
 	private void ExecuteBuffer () {
@@ -97,29 +135,42 @@ public class Shadows
 		int cascadeCount = _settings.directional.cascadeCount;
 		int tileOffset = index * cascadeCount;
 		Vector3 ratios = _settings.directional.CascadeRatios;
+		float cullingFactor = Mathf.Max(0f, 0.8f - _settings.directional.cascadeFade);	
 		for (int i = 0; i < cascadeCount; i++)
 		{
 			_cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(
-				light.visibleLightIndex, i, cascadeCount, ratios, tileSize, 0f,
+				light.visibleLightIndex, i, cascadeCount, ratios, tileSize, light.nearPlaneOffset,
 				out Matrix4x4 viewMatrix, out Matrix4x4 projectionMatrix,
 				out ShadowSplitData splitData
 			);
 			if (index == 0)
 			{
-				Vector4 cullingSphere = splitData.cullingSphere;
-				cullingSphere.w *= cullingSphere.w;
-				_cascadeCullingSpheres[i] = cullingSphere;
+				SetCascadeData(i, splitData.cullingSphere, tileSize);
 			}
 			// 包含级联阴影映射(Cascaded Shadow Maps)的裁剪信息
+			splitData.shadowCascadeBlendCullingFactor = cullingFactor;
 			shadowSettings.splitData = splitData;
 			int tileIndex = tileOffset + i;
 			_dirShadowMatrices[tileIndex] = ConvertToAtlasMatrix(projectionMatrix * viewMatrix, 
 				SetTileViewport(tileIndex, split, tileSize), split);
 			_buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
+			_buffer.SetGlobalDepthBias(0f, light.slopeScaleBias);
 			ExecuteBuffer();
 			// 调用ShadowCaster Pass
 			_context.DrawShadows(ref shadowSettings);
+			_buffer.SetGlobalDepthBias(0f, 0f);
 		}
+	}
+	
+	private void SetCascadeData (int index, Vector4 cullingSphere, float tileSize) {
+		// 每个像素代表的世界空间大小
+		float texelSize = 2f * cullingSphere.w / tileSize;
+		float filterSize = texelSize * ((float)_settings.directional.filter + 1f);
+		// 防止采样位置超出 Shadow Map
+		cullingSphere.w -= filterSize;
+		cullingSphere.w *= cullingSphere.w;
+		_cascadeCullingSpheres[index] = cullingSphere;
+		_cascadeData[index] = new Vector4(1f / cullingSphere.w, filterSize * 1.4142136f);
 	}
 	
 	private Vector2 SetTileViewport (int index, int split, float tileSize) {
