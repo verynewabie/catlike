@@ -48,7 +48,12 @@ public partial class CameraRenderer
 			criteria = SortingCriteria.CommonOpaque
 		};
 		// Unity只会渲染那些在Tags中指定LightMode为_unlitShaderTagId的，不过Unlit的Color和Transparent都没有LightMode，可能是SRP的源码发力了：没有Pass就默认为SRPDefaultUnlit
-		var drawingSettings = new DrawingSettings(_unlitShaderTagId, sortingSettings) { enableDynamicBatching = useDynamicBatching, enableInstancing = useGPUInstancing };
+		var drawingSettings = new DrawingSettings(_unlitShaderTagId, sortingSettings)
+		{
+			enableDynamicBatching = useDynamicBatching, 
+			enableInstancing = useGPUInstancing,
+			perObjectData = PerObjectData.Lightmaps
+		};
 		drawingSettings.SetShaderPassName(1, _litShaderTagId);
 		var filteringSettings = new FilteringSettings(RenderQueueRange.opaque);
 		_context.DrawRenderers(_cullingResults, ref drawingSettings, ref filteringSettings);
