@@ -7,6 +7,7 @@ public class PerObjectMaterialProperties : MonoBehaviour {
 	private static readonly int _cutoffId = Shader.PropertyToID("_Cutoff");
 	private static readonly int _metallicId = Shader.PropertyToID("_Metallic");
 	private static readonly int _smoothnessId = Shader.PropertyToID("_Smoothness");
+	private static readonly int _emissionColorId = Shader.PropertyToID("_EmissionColor");
 	
 	private static MaterialPropertyBlock _block;
 	
@@ -14,6 +15,8 @@ public class PerObjectMaterialProperties : MonoBehaviour {
 	private Color _baseColor = Color.white;
 	[SerializeField, Range(0f, 1f)]
 	private float _cutoff = 0.5f, _metallic = 0f, _smoothness = 0.5f;
+	[SerializeField, ColorUsage(false, true)]
+	private Color _emissionColor = Color.black;
 	
 	// 主要在脚本被加载或 Inspector 中的值被修改时，仅在编辑器下被调用，早于Awake
 	private void OnValidate () {
@@ -22,6 +25,7 @@ public class PerObjectMaterialProperties : MonoBehaviour {
 		_block.SetFloat(_cutoffId, _cutoff);
 		_block.SetFloat(_metallicId, _metallic);
 		_block.SetFloat(_smoothnessId, _smoothness);
+		_block.SetColor(_emissionColorId, _emissionColor);
 		GetComponent<Renderer>().SetPropertyBlock(_block);
 	}
 

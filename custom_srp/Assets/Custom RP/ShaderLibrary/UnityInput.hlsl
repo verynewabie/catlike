@@ -9,6 +9,9 @@ CBUFFER_START(UnityPerDraw)
     float4 unity_LODFade;
     real4 unity_WorldTransformParams;
 
+    // 阴影遮罩数据烘焙到光照探针中，称为遮挡探针
+    float4 unity_ProbesOcclusion;
+
     float4 unity_LightmapST;
     float4 unity_DynamicLightmapST;
 
@@ -19,6 +22,11 @@ CBUFFER_START(UnityPerDraw)
     float4 unity_SHBg;
     float4 unity_SHBb;
     float4 unity_SHC;
+
+    float4 unity_ProbeVolumeParams;
+    float4x4 unity_ProbeVolumeWorldToObject;
+    float4 unity_ProbeVolumeSizeInv;
+    float4 unity_ProbeVolumeMin;
 CBUFFER_END
 
 float3 _WorldSpaceCameraPos;

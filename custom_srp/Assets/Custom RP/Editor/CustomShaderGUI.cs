@@ -62,6 +62,7 @@ public class CustomShaderGUI : ShaderGUI
 		_editor = materialEditor;
 		_materials = materialEditor.targets;
 		_properties = properties;
+		BakedEmission();
 		
 		EditorGUILayout.Space();
 		// 第三个参数：是否允许点击标签区域来切换折叠状态
@@ -74,6 +75,36 @@ public class CustomShaderGUI : ShaderGUI
 		}
 		if (EditorGUI.EndChangeCheck()) {
 			SetShadowCasterPass();
+			// 我们只处理了Transparent类型，其它类型走Unity内置逻辑，因此需要我们给规定的变量赋值
+			CopyLightMappingProperties();
+		}
+	}
+	
+	private void CopyLightMappingProperties () {
+		MaterialProperty mainTex = FindProperty("_MainTex", _properties, false);
+		MaterialProperty baseMap = FindProperty("_BaseMap", _properties, false);
+		if (mainTex != null && baseMap != null) {
+			mainTex.textureValue = baseMap.textureValue;
+			mainTex.textureScaleAndOffset = baseMap.textureScaleAndOffset;
+		}
+		MaterialProperty color = FindProperty("_Color", _properties, false);
+		MaterialProperty baseColor = FindProperty("_BaseColor", _properties, false);
+		if (color != null && baseColor != null) {
+			color.colorValue = baseColor.colorValue;
+		}
+	}
+	
+	private void BakedEmission () {
+		EditorGUI.BeginChangeCheck();
+		_editor.LightmapEmissionProperty();
+		if (EditorGUI.EndChangeCheck()) {
+			foreach (var obj in _editor.targets)
+			{
+				var mat = (Material)obj;
+				// 关闭材质的EmissiveIsBlack Flag，强制烘焙Emissive
+				if (mat != null)
+					mat.globalIlluminationFlags &= ~MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+			}
 		}
 	}
 	

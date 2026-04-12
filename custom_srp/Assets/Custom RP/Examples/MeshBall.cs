@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class MeshBall : MonoBehaviour {
 
@@ -8,6 +9,8 @@ public class MeshBall : MonoBehaviour {
 
 	[SerializeField]
 	private Mesh _mesh = null;
+	[SerializeField]
+	private LightProbeProxyVolume _lightProbeVolume = null;
 
 	// 要用支持GPU Instancing的材质
 	[SerializeField]
@@ -36,8 +39,26 @@ public class MeshBall : MonoBehaviour {
 			_block.SetVectorArray(_baseColorId, _baseColors);
 			_block.SetFloatArray(_metallicId, _metallic);
 			_block.SetFloatArray(_smoothnessId, _smoothness);
+			if (!_lightProbeVolume)
+			{
+				var positions = new Vector3[1023];
+				for (int i = 0; i < _matrices.Length; i++)
+				{
+					positions[i] = _matrices[i].GetColumn(3);
+				}
+
+				var lightProbes = new SphericalHarmonicsL2[1023];
+				var occlusionProbes = new Vector4[1023];
+				LightProbes.CalculateInterpolatedLightAndOcclusionProbes(
+					positions, lightProbes, occlusionProbes
+				);
+				_block.CopySHCoefficientArraysFrom(lightProbes);
+				_block.CopyProbeOcclusionArrayFrom(occlusionProbes);
+			}
 		}
-		Graphics.DrawMeshInstanced(_mesh, 0, _material, _matrices, 1023, _block);
+		// Camera传null代表对所有生效，在赋值了LPPV的情况下使用LPPV
+		Graphics.DrawMeshInstanced(_mesh, 0, _material, _matrices, 1023, _block, ShadowCastingMode.On, true, 0, null,
+			_lightProbeVolume ? LightProbeUsage.UseProxyVolume : LightProbeUsage.CustomProvided, _lightProbeVolume);
 	}
 	
 }

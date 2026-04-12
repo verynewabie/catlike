@@ -44,20 +44,41 @@ public class Shadows
 		"_CASCADE_BLEND_SOFT",
 		"_CASCADE_BLEND_DITHER"
 	};
+	
+	// Shadow Mask 和 Distance Shadow Mask 的区别就是前者生效时，静态物体会使用Shadow Mask，只有动态物体会使用Shadow Map
+	private static readonly string[] _shadowMaskKeywords = {
+		"_SHADOW_MASK_ALWAYS",
+		"_SHADOW_MASK_DISTANCE"
+	};
+	private bool _useShadowMask;
 
 	public void Setup (ScriptableRenderContext context, CullingResults cullingResults, ShadowSettings settings) {
 		_context = context;
 		_cullingResults = cullingResults;
 		_settings = settings;
 		_shadowedDirectionalLightCount = 0;
+		_useShadowMask = false;
 	}
 
-	public Vector3 ReserveDirectionalShadows(Light light, int visibleLightIndex)
+	public Vector4 ReserveDirectionalShadows(Light light, int visibleLightIndex)
 	{
 		// 目前只有直线光，所以用visibleLightIndex还是对的
 		// GetShadowCasterBounds拿到阴影剔除结果，如果范围内没有投射阴影的物体，或距离超出，就返回false
-		if (_shadowedDirectionalLightCount < MaxShadowedDirectionalLightCount && light.shadows != LightShadows.None && light.shadowStrength > 0f
-		    && _cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds b)) {
+		// 后续又把GetShadowCasterBounds的调用去掉了，因为会妨碍把_useShadowMask设为true
+		if (_shadowedDirectionalLightCount < MaxShadowedDirectionalLightCount && light.shadows != LightShadows.None && light.shadowStrength > 0f ) {
+			float maskChannel = -1;
+			LightBakingOutput lightBaking = light.bakingOutput;
+			if (lightBaking.lightmapBakeType == LightmapBakeType.Mixed && lightBaking.mixedLightingMode == MixedLightingMode.Shadowmask)
+			{
+				_useShadowMask = true;
+				maskChannel = lightBaking.occlusionMaskChannel;
+			}
+			if (!_cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds b))
+			{
+				// 特殊情况下规定为负数，使其走到只读Baked阴影的分支
+				return new Vector4(-light.shadowStrength, 0f, 0f, maskChannel);
+			}
+
 			_shadowedDirectionalLights[_shadowedDirectionalLightCount] = new ShadowedDirectionalLight
 			{
 				visibleLightIndex = visibleLightIndex,
@@ -65,10 +86,10 @@ public class Shadows
 				nearPlaneOffset = light.shadowNearPlane
 			};
 			// 我们只是利用 light.shadowNormalBias 和 light.shadowBias 属性，它们原来的功能和我们的用法不一样
-			return new Vector3(light.shadowStrength, _settings.directional.cascadeCount * _shadowedDirectionalLightCount++, light.shadowNormalBias);
+			return new Vector4(light.shadowStrength, _settings.directional.cascadeCount * _shadowedDirectionalLightCount++, light.shadowNormalBias, maskChannel);
 		}
 		// 0传入Light.hlsl后，在Shadows.hlsl中计算时特判返回1
-		return Vector3.zero;
+		return new Vector4(0f, 0f, 0f, -1f);
 	}
 
 	public void Render () {
@@ -76,6 +97,11 @@ public class Shadows
 			RenderDirectionalShadows();
 		else // 不生成时WebGL会默认生成Default类型，与阴影采样器不兼容
 			_buffer.GetTemporaryRT(_dirShadowAtlasId, 1, 1, 32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap);
+		_buffer.BeginSample(BufferName);
+		SetKeywords(_shadowMaskKeywords, _useShadowMask ? QualitySettings.shadowmaskMode == ShadowmaskMode.Shadowmask ? 0 : 1 : -1);
+		SetKeywords(_shadowMaskKeywords, _useShadowMask ? 0 : -1);
+		_buffer.EndSample(BufferName);
+		ExecuteBuffer();
 	}
 	
 	public void Cleanup () {

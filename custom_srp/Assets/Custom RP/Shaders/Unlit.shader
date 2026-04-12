@@ -4,7 +4,7 @@ Shader "Custom RP/Unlit"
 	{
 		// {}是很久以前的用法，现在用它只是为了防止奇怪的错误
 		_BaseMap("Texture", 2D) = "white" {}
-		_BaseColor("Color", Color) = (1.0, 1.0, 1.0, 1.0)
+		[HDR]_BaseColor("Color", Color) = (1.0, 1.0, 1.0, 1.0)
 		_Cutoff ("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
 		[Toggle(_CLIPPING)]
 		_Clipping ("Alpha Clipping", Float) = 0
@@ -18,6 +18,10 @@ Shader "Custom RP/Unlit"
 	CustomEditor "CustomShaderGUI"
 	SubShader
 	{
+		HLSLINCLUDE
+		#include "../ShaderLibrary/Common.hlsl"
+		#include "UnlitInput.hlsl"
+		ENDHLSL
 		Pass
 		{
 			Blend [_SrcBlend] [_DstBlend]

@@ -25,6 +25,10 @@ float DistanceSquared(float3 pA, float3 pB) {
 }
 
 // 定义GPU实例化要用到的一些宏
+// 遮挡数据本身是可以被自动实例化的，但 UnityInstancing 仅在定义了 SHADOWS_SHADOWMASK 时才会执行此操作
+#if defined(_SHADOW_MASK_ALWAYS) || defined(_SHADOW_MASK_DISTANCE)
+#define SHADOWS_SHADOWMASK
+#endif
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
 
