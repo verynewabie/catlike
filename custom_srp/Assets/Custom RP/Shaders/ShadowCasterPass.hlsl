@@ -34,6 +34,7 @@ Varyings ShadowCasterPassVertex (Attributes input) {
 // 不需要返回值和对应语义
 void ShadowCasterPassFragment (Varyings input) {
 	UNITY_SETUP_INSTANCE_ID(input);
+	ClipLOD(input.positionCS.xy, unity_LODFade.x);
 	float4 base = GetBase(input.baseUV);
 	#if defined(_SHADOWS_CLIP)
 	// 丢弃片元不会写入深度

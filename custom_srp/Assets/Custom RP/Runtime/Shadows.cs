@@ -99,7 +99,6 @@ public class Shadows
 			_buffer.GetTemporaryRT(_dirShadowAtlasId, 1, 1, 32, FilterMode.Bilinear, RenderTextureFormat.Shadowmap);
 		_buffer.BeginSample(BufferName);
 		SetKeywords(_shadowMaskKeywords, _useShadowMask ? QualitySettings.shadowmaskMode == ShadowmaskMode.Shadowmask ? 0 : 1 : -1);
-		SetKeywords(_shadowMaskKeywords, _useShadowMask ? 0 : -1);
 		_buffer.EndSample(BufferName);
 		ExecuteBuffer();
 	}

@@ -24,6 +24,15 @@ float DistanceSquared(float3 pA, float3 pB) {
 	return dot(pA - pB, pA - pB);
 }
 
+void ClipLOD (float2 positionCS, float fade) {
+	#if defined(LOD_FADE_CROSSFADE)
+	// Interleaved，交错的，交织的，便宜的、按屏幕像素坐标生成的伪随机噪声函数
+	float dither = InterleavedGradientNoise(positionCS.xy, 0);
+	// 淡入的物体fade为负
+	clip(fade + (fade < 0.0 ? dither : -dither));
+	#endif
+}
+
 // 定义GPU实例化要用到的一些宏
 // 遮挡数据本身是可以被自动实例化的，但 UnityInstancing 仅在定义了 SHADOWS_SHADOWMASK 时才会执行此操作
 #if defined(_SHADOW_MASK_ALWAYS) || defined(_SHADOW_MASK_DISTANCE)
