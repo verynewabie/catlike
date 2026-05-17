@@ -1,4 +1,4 @@
-﻿#ifndef CUSTOM_UNLIT_PASS_INCLUDED
+#ifndef CUSTOM_UNLIT_PASS_INCLUDED
 #define CUSTOM_UNLIT_PASS_INCLUDED
 
 #include "../ShaderLibrary/Common.hlsl"
@@ -30,9 +30,10 @@ Varyings UnlitPassVertex (Attributes input)
 
 float4 UnlitPassFragment (Varyings input) : SV_TARGET {
     UNITY_SETUP_INSTANCE_ID(input);
-    float4 base = GetBase(input.baseUV);
+    InputConfig config = GetInputConfig(input.baseUV);
+    float4 base = GetBase(config);
 #ifdef _CLIPPING
-    clip(base.a - GetCutoff(input.baseUV));
+    clip(base.a - GetCutoff(config));
 #endif
     return base;
 }

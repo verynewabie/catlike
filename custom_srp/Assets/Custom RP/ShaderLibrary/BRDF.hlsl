@@ -14,6 +14,9 @@ struct BRDF
 	float3 diffuse;
 	float3 specular;
 	float roughness;
+	// TODO 这几种Roughness的区别？为什么相机方向没影响环境反射？
+	float perceptualRoughness;
+	float fresnel;
 };
 
 BRDF GetBRDF (Surface surface, bool applyAlphaToDiffuse = false)
@@ -27,9 +30,10 @@ BRDF GetBRDF (Surface surface, bool applyAlphaToDiffuse = false)
 	// 金属度为0时。高光为最小反射率，金属度为1时，高光为表面颜色
 	brdf.specular = lerp(MIN_REFLECTIVITY, surface.color, surface.metallic);
 	// PerceptualSmoothnessToPerceptualRoughness是CoreRP库里CommonMaterial的
-	float perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(surface.smoothness);
-	brdf.roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
-
+	brdf.perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(surface.smoothness);
+	brdf.roughness = PerceptualRoughnessToRoughness(brdf.perceptualRoughness);
+	brdf.fresnel = saturate(surface.smoothness + 1.0 - oneMinusReflectivity);
+	
 	return brdf;
 }
 
@@ -49,6 +53,14 @@ float SpecularStrength (Surface surface, BRDF brdf, Light light)
 float3 DirectBRDF (Surface surface, BRDF brdf, Light light)
 {
 	return SpecularStrength(surface, brdf, light) * brdf.specular + brdf.diffuse;
+}
+
+float3 IndirectBRDF (Surface surface, BRDF brdf, float3 diffuse, float3 specular) {
+	float fresnelStrength = surface.fresnelStrength * Pow4(1.0 - saturate(dot(surface.normal, surface.viewDirection)));
+	float3 reflection = specular * lerp(brdf.specular, brdf.fresnel, fresnelStrength);
+	reflection /= brdf.roughness * brdf.roughness + 1.0;
+	// 遮挡贴图数据仅适用于间接环境光照
+	return (diffuse * brdf.diffuse + reflection) * surface.occlusion;
 }
 
 #endif
